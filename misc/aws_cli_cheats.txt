@@ -1,0 +1,153 @@
+#
+# Trucos del AWS CLI
+#
+# Para más, consulta la referencia:
+# https://docs.aws.amazon.com/cli/latest/reference/
+#
+# angel.galindo@uols.org
+# 20191208
+#
+
+#----
+# Ayuda
+#----
+
+# Ayuda general
+aws2 help
+# Ayuda sobre un servicio
+aws2 ec2 help
+
+#----
+# ec2
+#----
+
+# Ver todas las regiones:
+aws2 ec2 describe-regions
+
+# Ver todas las AZs:
+aws2 ec2 describe-availability-zones
+# Ver las AZs de una región:
+aws2 ec2 describe-availability-zones --region=us-east-1
+
+# Ver todos los VPCs
+aws2 ec2 describe-vpcs
+# Crear un VPC:
+aws2 ec2 create-vpc --cidr-block 192.168.100.0/24
+# Ver sólo un VPC:
+aws2 ec2 describe-vpcs --vpc-ids=vpc-0b85e61717126d269
+# Borrar un VPC:
+aws2 ec2 delete-vpc --vpc-id=vpc-0b85e61717126d269
+# Ver todas las subnets:
+
+aws2 ec2 describe-subnets 
+# Ver sólo el SubnetId y el bloque CIDR de una subnet:
+aws2 ec2 describe-subnets --subnet-ids subnet-059c919274f2690ca --query 'Subnets[*].{Subnet_Id:SubnetId,CIDR:CidrBlock}'
+# Borrar una subnet:
+aws2 ec2 delete-subnet --subnet-id subnet-059c919274f2690ca
+# Crear una subnet:
+aws2 ec2 create-subnet --vpc-id vpc-ff206885 --cidr-block 172.31.100.0/24 --availability-zone us-east-1a
+
+# Consultar AMIs públicas de Ubuntu. Ojo! retorna más de 15000 objetos:
+aws2 ec2 describe-images --filters "Name=is-public,Values=[true]" "Name=name,Values=[ubuntu*]" --query 'Images[*].{Arch:Architecture,CreatDate:CreationDate,ImageId:ImageId}'
+
+# Describir todas tus instancias:
+aws2 ec2 describe-instances
+# Crear dos instancias:
+aws2 ec2 run-instances --image-id ami-04b9e92b5572fa0d1 --key-name UolsTestKeys --security-groups prueba-sg --instance-type t2.micro --placement AvailabilityZone=us-east-1a --subnet-id=subnet-059c919274f2690ca --count 2
+# Terminar (eliminar) una instancia:
+aws2 ec2 terminate-instances --instance-ids i-00c97cadc614cc7a4
+
+# Ver un Security Group:
+aws2 ec2 describe-security-groups --group-ids sg-09e9d189d10ff4320 --query 'SecurityGroups[*].{GroupName:GroupName,GroupId:GroupId}'
+# Crear un Security Group:
+aws2 ec2 create-security-group --group-name uols-webserver --description "SG para mi servidor web" --vpc-id vpc-ff206885
+# Añadir a Security Group regla que da acceso al puerto 80 TCP:
+aws2 ec2 authorize-security-group-ingress --group-id sg-09e9d189d10ff4320 --protocol tcp --port 80 --cidr 172.16.0.0/12 
+
+# Ver todos los ELBs:
+aws2 elbv2 describe-load-balancers
+# Ver un ELB:
+aws2 elbv2 describe-load-balancers --names UOLSELB
+# Ver los listeners de un ELB:
+aws2 elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:loadbalancer/app/UOLSELB/3dcbf73365578c45
+# Ver las reglas de un listener de un ELB:
+aws2 elbv2 describe-rules --listener-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:listener/app/UOLSELB/3dcbf73365578c45/cebaa89865463e3c
+# Ver los Target Groups de un ELB:
+aws2 elbv2 describe-target-groups --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:loadbalancer/app/UOLSELB/3dcbf73365578c45
+# Ver la salud de los targets de un Target Group:
+aws2 elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:targetgroup/UolsTargetGroup/f50b9a619d9f3bce{
+# Ver las etiquetas de un ELB:
+aws2 elbv2 describe-tags --resource-arns arn:aws:elasticloadbalancing:us-east-1:610304081332:loadbalancer/app/UOLSELB/3dcbf73365578c45
+# Borrar un ELB (también borra los listeners y sus reglas, pero no los Target Groups):
+aws2 elbv2 delete-load-balancer --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:loadbalancer/app/UOLSELB/3dcbf73365578c45 
+# Borrar un Target Group:
+aws2 elbv2 delete-target-group --target-group-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:targetgroup/UolsTargetGroup/f50b9a619d9f3bce
+# Crear un ELB:
+aws2 elbv2 create-load-balancer --name uols-elb --type network --subnets subnet-006639d3e718c61e8 subnet-00221dbefd494f02a
+# Crear un Target Group:
+aws2 elbv2 create-target-group --name uols-target-group --protocol TCP --port 80 --vpc-id vpc-ff206885
+# Agregar targets a un Target Group 
+aws2 elbv2 register-targets --target-group-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:targetgroup/uols-target-group/68834962cd3b0a25 --targets Id=i-0643ef02690670fc6 Id=i-085eb2cbe337f4ebb
+# Añadir un Listener al ELB con una regla predeterminada:
+aws2 elbv2 create-listener --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:loadbalancer/net/uols-elb/c4db5f49a7107c9e --protocol TCP --port 80 --default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:610304081332:targetgroup/uols-target-group/68834962cd3b0a25
+# Borrar un listener:
+aws2 elbv2 delete-listener --listener-arn arn:aws:elasticloadbalancing:us-east-1:610304081332:listener/app/uols-elb/1b396be9d3fda20e/96921596418d88d1
+
+#--------------
+# Auto-escalado
+#--------------
+
+# Crear una configuración de lanzamiento:
+aws2 autoscaling create-launch-configuration --launch-configuration-name mi-conf-de-lanzamiento --image-id ami-a1b2c3a1b2c3a1b2c3 --instance-type t2.micro --associate-public-ip-address --security-groups sg-a1b2c3a1
+
+# Crear una plantilla de lanzamiento:
+aws2 ec2 create-launch-template --launch-template-name mi-plnt-de-lanzam --version-description mi-descrip-vers --launch-template-data '{"NetworkInterfaces":[{"DeviceIndex":0,"AssociatePublicIpAddress":true,"Groups":["sg-38495a38"],"DeleteOnTermination":true}],"ImageId":"ami-a1b2c3a1b2c3a1b2c3","InstanceType":"t2.micro"}'
+
+# Crear un grupo de esalado asociado a un balanceador:
+aws2 autoscaling create-auto-scaling-group --auto-scaling-group-name mi-asg --launch-configuration-name mi-conf-de-lanzamiento --vpc-zone-identifier "subnet-4eb0c236,subnet-512aec1d,subnet-b432b4ac" --load-balancer-names "mi-elb" --max-size 5 --min-size 1 --desired-capacity 2
+
+aws2 autoscaling create-auto-scaling-group --auto-scaling-group-name my-asg \
+  --launch-template "LaunchTemplateName=my-launch-template,Version=1" \
+  --vpc-zone-identifier "subnet-5ea0c127,subnet-6194ea3b,subnet-c934b782" \
+  --target-group-arns "arn:aws-cn:elasticloadbalancing:region:123456789012:targetgroup/my-targets/1234567890123456" \
+  --max-size 5 --min-size 1 --desired-capacity 2
+
+
+#---
+# S3
+#---
+
+# Listar los S3 buckets de la región:
+aws2 s3 ls
+# Listar el contenido de una carpeta de un S3 bucket:
+aws2 s3 ls s3://uols-test/
+# Descargar un fichero S3 de un S3 bucket:
+aws2 s3 cp s3://uols-test/una_carpeta/fichero.txt /tmp/
+
+
+#-----------
+# CloudWatch
+#-----------
+
+# Listar los paneles
+aws2 cloudwatch list-dashboards
+# Borrar paneles los paneles
+aws2 cloudwatch delete-dashboards --dashboard-names "NombreDePanel" "NombreDeOtroPanel"
+# Volcar descripción de un panel:
+aws2 cloudwatch get-dashboard --dashboard-name "NombreDePanel"
+
+# Ver todas las métricas disponibles:
+aws2 cloudwatch list-metrics 
+
+#-----------
+# CloudTrail
+#-----------
+
+# Listar los trails:
+aws2 cloudtrail list-trails
+# Ver un trail:
+aws2 cloudtrail describe-trails --trail-name-list NombreDelTrail
+aws2 cloudtrail get-trail --name NombreDelTrail
+# Borrar un trail:
+aws2 cloudtrail delete-trail --name NombreDelTrail
+
