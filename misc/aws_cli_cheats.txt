@@ -151,3 +151,13 @@ aws2 cloudtrail get-trail --name NombreDelTrail
 # Borrar un trail:
 aws2 cloudtrail delete-trail --name NombreDelTrail
 
+#----
+# KMS
+#----
+
+# Listar las claves:
+aws kms list-keys
+
+# Ver una clave:
+aws kms describe-key --key-id '23ebxxxx-xxxx-xxxx-xxxx-2f54xxxxxxxx'
+
